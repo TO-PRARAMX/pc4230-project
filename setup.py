@@ -1,0 +1,67 @@
+from collections.abc import Sequence
+import numpy as np
+from scipy import fft
+from qutip import Qobj
+
+class HarmonicOscillator:
+    
+    def __init__(self, 
+                boundary : Sequence[float],
+                n : int,
+                x0 : float = 0,):
+        self.x0 = x0
+        self.xlo, self.xhi = boundary
+        self.n = n
+    
+    def xi(self):
+        L = self.xhi - self.xlo
+        dx = L/self.n
+        return np.array([self.xlo + i * dx for i in range(self.n)])
+    
+    def _T(self, momentum = True):
+        if momentum:
+            return np.diag(np.square(self.xi()))
+        else:
+            return 0
+    
+    def _V(self):
+        return np.diag(np.square(self.xi()))
+    
+    def _periodic_perturbation(self, omega, V0):
+        def func(t):
+            return V0 * np.cos(omega * t)
+        return func
+    
+    @staticmethod
+    def _dft(N) -> np.array:
+        return fft(np.eye(N))
+    
+    @staticmethod
+    def _rdft(N) -> np.array:
+        return 1/N * fft(np.eye(N))
+        
+    def time_evolution(self, tlist, omega):
+        tprev = 0
+        U = np.qeye(self.N)
+        for t in tlist:
+            dt = t - tprev
+            # exp(-ij * V(t) * dt)
+            Vavg_1 = self._V() + self._periodic_perturbation(omega, t)
+            U = np.exp(-1j * Vavg_1 * dt/2) * U
+            # dft
+            U = HarmonicOscillator._dft(self.n) * U
+            # exp(-1j * T * dt)
+            U = np.exp(-1j * self._T(momentum = True)) * U 
+            # rdft
+            U = HarmonicOscillator._rdft(self.n) * U
+            # exp(-ij * V(t+dt/2) * dt)
+            Vavg_1 = self._V() + self._periodic_perturbation(omega, t + dt/2)
+            U = np.exp(-1j * Vavg_1 * dt/2) * U
+                
+        return U
+        
+    def eigenstates(self):
+        pass
+        
+    def qutip_hamiltonian(self):
+        pass
