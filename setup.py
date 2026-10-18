@@ -49,12 +49,12 @@ class HarmonicOscillator:
         return fft.fft(np.eye(N), axis=0)
     
     @staticmethod
-    def _rdft(N) -> np.array:
+    def _idft(N) -> np.array:
         return 1/N * fft.ifft(np.eye(N), axis=0)
         
     def time_evolution(self, tlist, omega):
         tprev = 0
-        U = np.qeye(self.N)
+        U = np.eye(self.N)
         for t in tlist:
             dt = t - tprev
             # exp(-ij * V(t) * dt)
@@ -64,8 +64,8 @@ class HarmonicOscillator:
             U = HarmonicOscillator._dft(self.n) * U
             # exp(-1j * T * dt)
             U = np.exp(-1j * self._T(momentum = True)) * U 
-            # rdft
-            U = HarmonicOscillator._rdft(self.n) * U
+            # idft
+            U = HarmonicOscillator._idft(self.n) * U
             # exp(-ij * V(t+dt/2) * dt)
             Vavg_1 = self._V() + self._periodic_perturbation(omega, t + dt/2)
             U = np.exp(-1j * Vavg_1 * dt/2) * U
@@ -75,7 +75,7 @@ class HarmonicOscillator:
     def eigenstates(self):
         # diagonalise the hamiltonian in position basis
         F = HarmonicOscillator._dft(self.n)
-        F_inv = HarmonicOscillator._rdft(self.n)
+        F_inv = HarmonicOscillator._idft(self.n)
 
         # H = F^(-1)TF + V
         H = F_inv @ self.T() @ F + self._V()
