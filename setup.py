@@ -2,6 +2,7 @@ from collections.abc import Sequence
 import numpy as np
 from scipy import fft
 from qutip import Qobj
+from scipy import special
 
 class HarmonicOscillator:
     
@@ -12,20 +13,31 @@ class HarmonicOscillator:
         self.x0 = x0
         self.xlo, self.xhi = boundary
         self.n = n
-    
+
     def xi(self):
+        # Position grid
         L = self.xhi - self.xlo
         dx = L/self.n
         return np.array([self.xlo + i * dx for i in range(self.n)])
+
+    def pi(self):
+        # Momentum grid, uses fftfreq to fix the disrepancy 
+        # that half of momentum grid should be at negative side
+        L = self.xhi - self.xlo
+        dx = L/self.n
+        # k = 2 pi f
+        return 2 * np.pi * fft.fftfreq(self.n, d=dx)
     
     def _T(self, momentum = True):
         if momentum:
-            return np.diag(np.square(self.xi()))
+            # Kinetic energy p^2/2
+            return np.diag(np.square(self.pi())/ 2)
         else:
             return 0
     
     def _V(self):
-        return np.diag(np.square(self.xi()))
+        # Harmonic potential x^2/2
+        return np.diag(np.square(self.xi())/2)
     
     def _periodic_perturbation(self, omega, V0):
         def func(t):
@@ -62,6 +74,9 @@ class HarmonicOscillator:
         
     def eigenstates(self):
         pass
+
+    def anal_eigenstates(self, n):
+        return special.hermite(n, monic=False)
         
     def qutip_hamiltonian(self):
         pass
