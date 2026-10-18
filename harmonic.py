@@ -54,8 +54,8 @@ class HarmonicOscillator:
     def _idft(N) -> np.array:
         return fft.ifft(np.eye(N), axis=0)
         
-    def time_evolution(self, tlist, omega, A):
-        tprev = 0
+    def time_evolution(self, tlist, omega, A, t0=0):
+        tprev = t0
         U = np.eye(self.n, dtype=complex)
         perturbation = self._periodic_perturbation(omega, A)
 

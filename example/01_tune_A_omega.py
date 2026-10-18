@@ -14,16 +14,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from harmonic import HarmonicOscillator
 
 def evolve(ho, psi0, times, omega, A):
-    """Calculate psi(t) = U(t, 0) psi0; no new FFT propagation logic here.
 
-    NOTE: Calling time_evolution([dt], ...) each frame would be INCORRECT:
-    it resets the driven potential's clock to zero for each step.
-    """
-    states = np.empty((len(times), ho.n), dtype=complex)
+    states = np.empty(
+        (len(times), ho.n),
+        dtype=complex
+    )
+
     states[0] = psi0
-    for frame in range(1, len(times)):
-        U = ho.time_evolution(times[1 : frame + 1], omega=omega, A=A)
-        states[frame] = U @ psi0
+
+    for i in range(1, len(times)):
+
+        U_step = ho.time_evolution(
+            [times[i]],
+            omega=omega,
+            A=A,
+            t0=times[i-1]
+        )
+
+        states[i] = U_step @ states[i-1]
+
     return states
 
 def expectation_energy(ho, states, times, omega, A):
@@ -52,8 +61,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--A", type=float, default=0.8, help="Drive amplitude")
     parser.add_argument("--omega", type=float, default=1.0, help="Drive frequency")
-    parser.add_argument("--n", type=int, default=48, help="Number of spatial grid points")
-    parser.add_argument("--frames", type=int, default=125, help="Number of animation frames")
+    parser.add_argument("--n", type=int, default=128, help="Number of spatial grid points")
+    parser.add_argument("--frames", type=int, default=200, help="Number of animation frames")
     parser.add_argument("--tmax", type=float, default=15.0, help="Total simulated time")
     args = parser.parse_args()
 
