@@ -26,6 +26,27 @@ def evolve(ho, psi0, times, omega, A):
         states[frame] = U @ psi0
     return states
 
+def expectation_energy(ho, states, times, omega, A):
+
+    # Hamiltonian without periodic perturbation
+    F = ho._dft(ho.n)
+    F_inv = ho._idft(ho.n)
+
+    H0 = F_inv @ ho._T() @ F + ho._V()
+
+    # <psi(t)|H0|psi(t)>
+    E0 = np.einsum(
+        "ti,ij,tj->t",
+        states.conj(), H0, states
+    ).real
+
+    # <psi(t)|A sin(x) cos(omega t)|psi(t)>
+    E_pert = (
+        A * np.cos(omega * times)
+        * (np.abs(states)**2 @ np.sin(ho.xi()))
+    )
+
+    return E0 + E_pert
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -41,7 +62,7 @@ def main():
     if not (-3 <= args.A <= 3 and 0 <= args.omega <= 4):
         parser.error("Please use -3 <= A <= 3 and 0 <= omega <= 4")
 
-    ho = HarmonicOscillator(boundary=(-7.0, 7.0), n=args.n)
+    ho = HarmonicOscillator(boundary=(-15.0, 15.0), n=args.n)
     x = ho.xi()
     dx = x[1] - x[0]
     times = np.linspace(0.0, args.tmax, args.frames)
@@ -54,12 +75,25 @@ def main():
     omega = args.omega
     states = evolve(ho, psi0, times, omega, A)
     density = np.abs(states) ** 2 / dx  # continuum-normalized probability density
+    energies = expectation_energy(ho, states, times, omega, A)
     frame_index = 0
     playing = True
     dirty = False
 
-    fig, ax = plt.subplots(figsize=(10.5, 6.5))
-    fig.subplots_adjust(left=0.11, right=0.89, top=0.88, bottom=0.35)
+    fig, (ax, ax_energy) = plt.subplots(
+        2, 1,
+        figsize=(10.5, 8.5),
+        gridspec_kw={"height_ratios": [2, 1]}
+    )
+
+    fig.subplots_adjust(
+        left=0.11,
+        right=0.89,
+        top=0.91,
+        bottom=0.32,
+        hspace=0.42
+    )
+
     ax2 = ax.twinx()
 
     (prob_line,) = ax.plot(x, density[0], lw=2.3, color="tab:blue", label=r"$|\psi(x,t)|^2$")
@@ -75,6 +109,42 @@ def main():
     ax.legend(loc="upper left")
     ax2.legend(loc="upper right")
     title = ax.set_title("")
+
+    # Energy expectation vs time
+    (energy_line,) = ax_energy.plot(
+        times, energies,
+        lw=2,
+        color="tab:purple",
+        label=r"$\langle H(t)\rangle$"
+    )
+
+    # Marker showing the current time
+    (energy_point,) = ax_energy.plot(
+        [times[0]], [energies[0]],
+        "o",
+        color="tab:red",
+        markersize=7
+    )
+
+    ax_energy.set_xlabel("Time t")
+    ax_energy.set_ylabel(r"$\langle H(t)\rangle$")
+    ax_energy.set_xlim(times[0], times[-1])
+    ax_energy.grid(alpha=0.2)
+    ax_energy.legend(loc="upper right")
+
+    # Automatically adjust energy y-axis
+    def update_energy_axis():
+        Emin = np.min(energies)
+        Emax = np.max(energies)
+
+        padding = max(0.1, 0.1 * (Emax - Emin))
+
+        ax_energy.set_ylim(
+            Emin - padding,
+            Emax + padding
+        )
+
+    update_energy_axis()
 
     ax_A = fig.add_axes([0.18, 0.185, 0.68, 0.032])
     ax_omega = fig.add_axes([0.18, 0.132, 0.68, 0.032])
@@ -93,13 +163,32 @@ def main():
     def show_state():
         t = times[frame_index]
         d = density[frame_index]
-        prob_line.set_ydata(d)
-        potential_line.set_ydata(x**2 / 2 + A * np.sin(x) * np.cos(omega * t))
-        x_mean = np.sum(x * np.abs(states[frame_index]) ** 2)
-        mean_line.set_xdata([x_mean, x_mean])
-        title.set_text(f"Driven harmonic oscillator     t = {t:.2f}     A = {A:.2f}     omega = {omega:.2f}")
-        return prob_line, potential_line, mean_line, title
 
+        # Update wavefunction
+        prob_line.set_ydata(d)
+
+        # Update potential
+        potential_line.set_ydata(
+            x**2 / 2 + A * np.sin(x) * np.cos(omega * t)
+        )
+
+        # Update mean position
+        x_mean = np.sum(x * np.abs(states[frame_index])**2)
+        mean_line.set_xdata([x_mean, x_mean])
+
+        # Update energy marker
+        energy_point.set_data(
+            [t],
+            [energies[frame_index]]
+        )
+
+        title.set_text(
+            f"Driven harmonic oscillator   "
+            f"t = {t:.2f}   A = {A:.2f}   omega = {omega:.2f}"
+        )
+
+        return prob_line, potential_line, mean_line, energy_point, title
+        
     def animate(_):
         nonlocal frame_index
         if playing:
@@ -119,7 +208,7 @@ def main():
     slider_omega.on_changed(mark_dirty)
 
     def apply_parameters(_=None):
-        nonlocal A, omega, states, density, dirty, frame_index
+        nonlocal A, omega, states, density, energies, dirty, frame_index
         if not dirty:
             return
 
@@ -132,9 +221,18 @@ def main():
 
         new_A, new_omega = slider_A.val, slider_omega.val
         updated_states = evolve(ho, psi0, times, new_omega, new_A)
-        A, omega = new_A, new_omega
-        states = updated_states
+        A, omega = new_A, new_omegastates = updated_states
         density = np.abs(states) ** 2 / dx
+
+        # Recalculate energy using new A and omega
+        energies = expectation_energy(
+            ho, states, times, omega, A
+        )
+
+        # Update energy curve
+        energy_line.set_ydata(energies)
+        update_energy_axis()
+
         frame_index = 0
         dirty = False
         ax.set_ylim(0, max(0.85, 1.15 * np.max(density)))
