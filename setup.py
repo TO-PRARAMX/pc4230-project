@@ -73,7 +73,16 @@ class HarmonicOscillator:
         return U
         
     def eigenstates(self):
-        pass
+        # diagonalise the hamiltonian in position basis
+        F = HarmonicOscillator._dft(self.n)
+        F_inv = HarmonicOscillator._rdft(self.n)
+
+        # H = F^(-1)TF + V
+        H = F_inv @ self.T() @ F + self._V()
+
+        eigenvalues, eigenvectors = np.linalg.eigh(H)
+
+        return eigenvalues, eigenvectors
 
     def anal_eigenstates(self, n):
         x = self.xi()
