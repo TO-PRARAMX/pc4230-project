@@ -39,18 +39,18 @@ class HarmonicOscillator:
         # Harmonic potential x^2/2
         return np.diag(np.square(self.xi())/2)
     
-    def _periodic_perturbation(self, omega, V0):
+    def _periodic_perturbation(self, omega, A):
         def func(t):
-            return V0 * np.cos(omega * t)
+            return A * np.sin(self.xi()) * np.cos(omega * t)
         return func
     
     @staticmethod
     def _dft(N) -> np.array:
-        return fft(np.eye(N))
+        return fft.fft(np.eye(N), axis=0)
     
     @staticmethod
     def _rdft(N) -> np.array:
-        return 1/N * fft(np.eye(N))
+        return 1/N * fft.ifft(np.eye(N), axis=0)
         
     def time_evolution(self, tlist, omega):
         tprev = 0
@@ -76,7 +76,15 @@ class HarmonicOscillator:
         pass
 
     def anal_eigenstates(self, n):
-        return special.hermite(n, monic=False)
+        x = self.xi()
+
+        Hn = special.hermite(n, monic = False)
+
+        norm = np.sqrt(
+            2**n * special.factorial(n) * np.sqrt(np.pi)
+        )
+
+        return Hn(x) * np.exp(-x**2 / 2) / norm
         
     def qutip_hamiltonian(self):
         pass
