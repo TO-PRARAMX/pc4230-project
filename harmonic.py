@@ -113,6 +113,3 @@ class HarmonicOscillator:
         )
 
         return Hn(x) * np.exp(-x**2 / 2) / norm
-        
-    def qutip_hamiltonian(self):
-        pass
