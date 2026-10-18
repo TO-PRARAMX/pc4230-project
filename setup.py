@@ -50,7 +50,7 @@ class HarmonicOscillator:
     
     @staticmethod
     def _idft(N) -> np.array:
-        return 1/N * fft.ifft(np.eye(N), axis=0)
+        return fft.ifft(np.eye(N), axis=0)
         
     def time_evolution(self, tlist, omega):
         tprev = 0
@@ -63,7 +63,7 @@ class HarmonicOscillator:
             # dft
             U = HarmonicOscillator._dft(self.n) * U
             # exp(-1j * T * dt)
-            U = np.exp(-1j * self._T(momentum = True)) * U 
+            U = np.exp(-1j * self._T(momentum = True) * dt) * U 
             # idft
             U = HarmonicOscillator._idft(self.n) * U
             # exp(-ij * V(t+dt/2) * dt)
