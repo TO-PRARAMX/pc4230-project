@@ -41,7 +41,9 @@ class HarmonicOscillator:
     
     def _periodic_perturbation(self, omega, A):
         def func(t):
-            return A * np.sin(self.xi()) * np.cos(omega * t)
+            return np.diag(
+                A *np.sin(self.xi()) * np.cos(omega * t)
+            )
         return func
     
     @staticmethod
@@ -50,25 +52,42 @@ class HarmonicOscillator:
     
     @staticmethod
     def _idft(N) -> np.array:
-        return 1/N * fft.ifft(np.eye(N), axis=0)
+        return fft.ifft(np.eye(N), axis=0)
         
-    def time_evolution(self, tlist, omega):
+    def time_evolution(self, tlist, omega, A):
         tprev = 0
-        U = np.eye(self.N)
+        U = np.eye(self.n, dtype=complex)
+        perturbation = self._periodic_perturbation(omega, A)
+
         for t in tlist:
             dt = t - tprev
-            # exp(-ij * V(t) * dt)
-            Vavg_1 = self._V() + self._periodic_perturbation(omega, t)
-            U = np.exp(-1j * Vavg_1 * dt/2) * U
+
+            # Potential evaluated at midpoint
+            Vavg_1 = self._V() + perturbation(tprev + dt/2)
+
+            # exp(-1j * V_mid * dt/2)
+            exp_V = np.diag(
+                np.exp(-1j * np.diag(Vavg_1) * dt / 2)
+            )
+            U = exp_V @ U
+
             # dft
-            U = HarmonicOscillator._dft(self.n) * U
+            U = HarmonicOscillator._dft(self.n) @ U
+
             # exp(-1j * T * dt)
-            U = np.exp(-1j * self._T(momentum = True)) * U 
+            exp_T = np.diag(
+            np.exp(-1j * np.diag(self._T(momentum=True)) * dt)
+        )
+            U = exp_T @ U
+
             # idft
-            U = HarmonicOscillator._idft(self.n) * U
-            # exp(-ij * V(t+dt/2) * dt)
-            Vavg_1 = self._V() + self._periodic_perturbation(omega, t + dt/2)
-            U = np.exp(-1j * Vavg_1 * dt/2) * U
+            U = HarmonicOscillator._idft(self.n) @ U
+
+            # exp(-1j * V_mid * dt/2)
+            U = exp_V @ U
+
+        
+            tprev = t
                 
         return U
         
@@ -78,7 +97,7 @@ class HarmonicOscillator:
         F_inv = HarmonicOscillator._idft(self.n)
 
         # H = F^(-1)TF + V
-        H = F_inv @ self.T() @ F + self._V()
+        H = F_inv @ self._T() @ F + self._V()
 
         eigenvalues, eigenvectors = np.linalg.eigh(H)
 
