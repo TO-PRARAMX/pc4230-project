@@ -6,10 +6,9 @@ from setup import HarmonicOscillator
 ho = HarmonicOscillator(boundary = (-10, 10),
                 n=100, x0 = 0)
 
+# Test 1: Eigenstates and eigenvalues
 E, psi = ho.eigenstates()
 print(E[:5])
-#plt.plot(eigenstates[1])
-#plt.plot(ho.anal_eigenstates(n=2))
 
 x = ho.xi()
 dx = x[1] - x[0]
@@ -39,3 +38,26 @@ plt.title("Numerical vs Analytical Eigenstates")
 plt.legend()
 plt.grid()
 plt.show()
+
+# Test 2: Unitary of time evolution
+tlist = np.linspace(0, 1, 101)
+
+U = ho.time_evolution(
+    tlist,
+    omega=1.0,
+    A=0.5
+)
+
+print("\nIs U unitary?")
+print(np.allclose(
+    U.conj().T @ U,
+    np.eye(ho.n),
+    atol=1e-10
+))
+
+# TEST 3: Probability conservation
+psi0 = psi[:, 0]
+psi_final = U @ psi0
+
+print("\nInitial norm:", np.linalg.norm(psi0))
+print("Final norm:", np.linalg.norm(psi_final))
