@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 import numpy as np
 from scipy import fft
-from qutip import Qobj
 from scipy import special
 
 class HarmonicOscillator:

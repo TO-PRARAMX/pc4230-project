@@ -230,7 +230,8 @@ def main():
 
         new_A, new_omega = slider_A.val, slider_omega.val
         updated_states = evolve(ho, psi0, times, new_omega, new_A)
-        A, omega = new_A, new_omegastates = updated_states
+        A, omega = new_A, new_omega
+        states = updated_states
         density = np.abs(states) ** 2 / dx
 
         # Recalculate energy using new A and omega
