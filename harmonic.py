@@ -52,43 +52,39 @@ class HarmonicOscillator:
     @staticmethod
     def _idft(N) -> np.array:
         return fft.ifft(np.eye(N), axis=0)
-        
-    def time_evolution(self, tlist, omega, A, t0=0):
+    
+    def time_evolution(self, tlist, omega, A, psi0, t0=0):
+        psi = np.array(psi0, dtype=complex, copy=True)
         tprev = t0
-        U = np.eye(self.n, dtype=complex)
-        perturbation = self._periodic_perturbation(omega, A)
+
+        # Store potential and kinetic energy as vectors
+        V0 = np.diag(self._V())
+        T = np.diag(self._T(momentum=True))
+        sin_x = np.sin(self.xi())
 
         for t in tlist:
             dt = t - tprev
+            t_mid = tprev + dt / 2
 
-            # Potential evaluated at midpoint
-            Vavg_1 = self._V() + perturbation(tprev + dt/2)
+            V_mid = V0 + A * sin_x * np.cos(omega * t_mid)
 
-            # exp(-1j * V_mid * dt/2)
-            exp_V = np.diag(
-                np.exp(-1j * np.diag(Vavg_1) * dt / 2)
-            )
-            U = exp_V @ U
+            exp_V = np.exp(-1j * V_mid * dt / 2)
+            exp_T = np.exp(-1j * T * dt)
 
-            # dft
-            U = HarmonicOscillator._dft(self.n) @ U
+            # Half potential step
+            psi = exp_V * psi
 
-            # exp(-1j * T * dt)
-            exp_T = np.diag(
-            np.exp(-1j * np.diag(self._T(momentum=True)) * dt)
-        )
-            U = exp_T @ U
+            # Full kinetic step in momentum space
+            psi = fft.fft(psi)
+            psi = exp_T * psi
+            psi = fft.ifft(psi)
 
-            # idft
-            U = HarmonicOscillator._idft(self.n) @ U
+            # Half potential step
+            psi = exp_V * psi
 
-            # exp(-1j * V_mid * dt/2)
-            U = exp_V @ U
-
-        
             tprev = t
-                
-        return U
+
+        return psi
         
     def eigenstates(self):
         # diagonalise the hamiltonian in position basis
