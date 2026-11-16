@@ -45,6 +45,13 @@ class HarmonicOscillator:
             )
         return func
     
+    def anharmonic_perburbation(self, A, order:int = 3):
+        def func(t):
+            return np.diag(
+                A * np.sin(self.xi()**order)
+            )
+        return func
+    
     @staticmethod
     def _dft(N) -> np.array:
         return fft.fft(np.eye(N), axis=0)
