@@ -8,10 +8,12 @@ class HarmonicOscillator:
     def __init__(self, 
                 boundary : Sequence[float],
                 n : int,
-                x0 : float = 0,):
+                x0 : float = 0,
+                alpha : float = 0):
         self.x0 = x0
         self.xlo, self.xhi = boundary
         self.n = n
+        self.alpha = alpha  # strength of the alpha * x^4 anharmonic term
 
     def xi(self):
         # Position grid
@@ -35,20 +37,14 @@ class HarmonicOscillator:
             return 0
     
     def _V(self):
-        # Harmonic potential x^2/2
-        return np.diag(np.square(self.xi())/2)
+        # Potential x^2/2 + alpha x^4 (alpha = 0: harmonic)
+        x = self.xi()
+        return np.diag(x**2/2 + self.alpha * x**4)
     
     def _periodic_perturbation(self, omega, A):
         def func(t):
             return np.diag(
                 A *np.sin(self.xi()) * np.cos(omega * t)
-            )
-        return func
-    
-    def anharmonic_perburbation(self, A, order:int = 3):
-        def func(t):
-            return np.diag(
-                A * np.sin(self.xi()**order)
             )
         return func
     

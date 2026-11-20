@@ -5,8 +5,8 @@ import numpy as np
 from harmonic import HarmonicOscillator
 
 
-def simulate(A=0.8, omega=1.0, dt=0.02, n=128, L=12, tmax=20):
-    ho = HarmonicOscillator(boundary=(-L, L), n=n)
+def simulate(A=0.8, omega=1.0, dt=0.02, n=128, L=12, tmax=20, alpha=0):
+    ho = HarmonicOscillator(boundary=(-L, L), n=n, alpha=alpha)
     x = ho.xi()
     times = np.linspace(0, tmax, int(np.ceil(tmax / dt)) + 1)
 
@@ -30,14 +30,14 @@ def simulate(A=0.8, omega=1.0, dt=0.02, n=128, L=12, tmax=20):
     return x, times, states, E0
 
 
-def populations(A, omega, tmax, levels, n=128, L=12):
+def populations(A, omega, tmax, levels, n=128, L=12, alpha=0):
     """Return times and P(0 -> k)(t) for each k in levels, shape (time, len(levels))."""
-    _, basis = HarmonicOscillator(boundary=(-L, L), n=n).eigenstates()
-    _, t, states, _ = simulate(A=A, omega=omega, n=n, L=L, tmax=tmax)
+    _, basis = HarmonicOscillator(boundary=(-L, L), n=n, alpha=alpha).eigenstates()
+    _, t, states, _ = simulate(A=A, omega=omega, n=n, L=L, tmax=tmax, alpha=alpha)
     return t, np.abs(states @ basis[:, levels].conj())**2
 
 
-def transition_prob(A, omega, tmax, n=128, L=12):
+def transition_prob(A, omega, tmax, n=128, L=12, alpha=0):
     """Return times and P(0 -> 1)(t)."""
-    t, P = populations(A, omega, tmax, [1], n=n, L=L)
+    t, P = populations(A, omega, tmax, [1], n=n, L=L, alpha=alpha)
     return t, P[:, 0]
